@@ -452,6 +452,30 @@ body {
   background: rgba(255, 255, 255, 0.75);
 }
 
+.footerLinks {
+  width: min(560px, 100%);
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+}
+
+.footerLink {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--text) 65%, var(--muted));
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.footerLink:hover { text-decoration: underline; }
+
+.footerLink:focus-visible {
+  outline: none;
+  border-color: var(--border);
+  box-shadow: 0 0 0 4px var(--toneSoft);
+}
+
 /* Inputs & buttons */
 label span {
   display: block;
