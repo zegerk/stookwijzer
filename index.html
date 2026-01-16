@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stookwijzer – check stookadvies</title>
+    <meta name="theme-color" content="#020617" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="screen" id="screen" data-tone="neutral">
+      <header class="topbar">
+        <div class="topbarRow">
+          <div class="postcodeWrap">
+            <form id="postcodeForm" class="postcodeForm">
+              <span class="postcodeLabel">Postcode</span>
+              <input
+                id="postcodeInput"
+                class="postcodeInput"
+                type="text"
+                inputmode="numeric"
+                autocomplete="postal-code"
+                placeholder="1234"
+                aria-label="Postcode (4 cijfers)"
+              />
+              <button id="btnLocate" type="button" class="postcodeAction secondary postcodeIcon" aria-label="Mijn locatie gebruiken">
+                <svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+                  <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+                  <circle cx="12" cy="12" r="2" fill="currentColor" />
+                  <path d="M12 2v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  <path d="M12 19v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  <path d="M2 12h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  <path d="M19 12h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+              </button>
+            </form>
+          </div>
+          <button id="btnTheme" type="button" class="chip chipIcon" aria-label="Thema wisselen">☀</button>
+        </div>
+      </header>
+
+      <section class="hero" aria-labelledby="headline" aria-describedby="subline">
+        <button id="btnCircle" type="button" class="circle" aria-label="Ververs stookadvies"></button>
+
+        <div class="headlineWrap">
+          <h1 id="headline" class="headline">–</h1>
+          <div id="subline" class="subline">–</div>
+        </div>
+
+        <div class="nextCard" id="result" hidden>
+          <div class="nextTitle">Tijdsloten</div>
+          <div class="changes" id="changesList" aria-label="Advies per tijdslot"></div>
+
+          <div class="divider"></div>
+          <div class="sources">
+            <span class="sourcesTitle">Data sources</span>
+            <span class="sourcesSep">·</span>
+            <a class="sourceLink" href="https://www.nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/8a3479b0-7065-4637-8ace-95c38ba215d5" target="_blank" rel="noreferrer">Nationaal Georegister – Stookwijzer</a>
+            <span class="sourcesSep">·</span>
+            <a class="sourceLink" href="https://data.rivm.nl/geo/alo/ows?service=WFS&request=GetCapabilities" target="_blank" rel="noreferrer">RIVM – WFS</a>
+          </div>
+        </div>
+
+        <div class="hint">Klik op de cirkel om te verversen</div>
+
+        <div id="status" class="toast" role="status" aria-live="polite"></div>
+      </section>
+
+      <details class="debug" id="debug">
+        <summary>Toon debuggegevens</summary>
+
+        <div class="debugGrid">
+          <label>
+            <span>Latitude</span>
+            <input id="lat" type="number" inputmode="decimal" step="any" placeholder="52.09" />
+          </label>
+          <label>
+            <span>Longitude</span>
+            <input id="lon" type="number" inputmode="decimal" step="any" placeholder="5.12" />
+          </label>
+        </div>
+
+        <div class="debugRow">
+          <button id="btnCheck" type="button">Check</button>
+          <button id="btnDemo" type="button" class="secondary">Demo (Utrecht)</button>
+          <div class="pc4" id="pc4">–</div>
+        </div>
+
+        <div class="muted small" id="runtime"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Tijdsblok</th>
+              <th>Advies</th>
+              <th>Definitief</th>
+            </tr>
+          </thead>
+          <tbody id="adviceRows"></tbody>
+        </table>
+
+        <details class="details">
+          <summary>Wat betekent dit?</summary>
+          <ul>
+            <li><strong>Geel</strong>: let op (stoken kan overlast en luchtverontreiniging geven).</li>
+            <li><strong>Oranje</strong>: beter van niet (stook liever niet).</li>
+            <li><strong>Rood</strong>: stook geen hout.</li>
+            <li><strong>Geen advies</strong>: de dataset bevat geen advies voor dit tijdsblok.</li>
+          </ul>
+          <p class="muted small">
+            Let op: dit is een weergave van het <em>stookadvies</em>. Lokale regels/verboden kunnen hiervan afwijken.
+          </p>
+        </details>
+      </details>
+    </main>
+
+    <script type="module" src="./stookwijzer.js"></script>
+  </body>
+</html>
