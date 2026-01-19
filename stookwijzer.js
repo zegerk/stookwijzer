@@ -1,12 +1,16 @@
 const WFS_ENDPOINT = 'https://data.rivm.nl/geo/alo/ows';
 const TYPE_NAME = 'alo:stookwijzer_v2';
 
+const TIME_ZONE = 'Europe/Amsterdam';
+
 const THEME_STORAGE_KEY = 'stookwijzer.theme';
 const PC4_STORAGE_KEY = 'stookwijzer.pc4';
 
 const state = {
   lastPc4: null,
   lastCoords: null,
+  requestSeq: 0,
+  activeController: null,
 };
 
 const el = {
@@ -96,14 +100,56 @@ function parseNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+const TZ_PARTS_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
+function getTimeZoneOffsetMinutes(date, timeZone = TIME_ZONE) {
+  const fmt = timeZone === TIME_ZONE
+    ? TZ_PARTS_FORMAT
+    : new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+  const parts = fmt.formatToParts(date);
+  const values = Object.fromEntries(parts.filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]));
+  const asUTC = Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second)
+  );
+  return (asUTC - date.getTime()) / 60000;
+}
+
+function dateFromAmsterdamParts(year, month, day, hour, minute) {
+  const utc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+  const offset = getTimeZoneOffsetMinutes(new Date(utc));
+  return new Date(utc - offset * 60 * 1000);
+}
+
 function parseModelRuntime(value) {
-  // Format in dataset: "dd-mm-jjjj uu:mm"
+  // Format in dataset: "dd-mm-jjjj uu:mm" in Europe/Amsterdam
   if (!value || typeof value !== 'string') return null;
   const m = value.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})$/);
   if (!m) return null;
   const [, dd, mm, yyyy, hh, min] = m;
-  // Treat as local time (NL). We keep it simple: Date in user's local timezone.
-  return new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min), 0, 0);
+  return dateFromAmsterdamParts(Number(yyyy), Number(mm), Number(dd), Number(hh), Number(min));
 }
 
 function addHours(date, hours) {
@@ -111,6 +157,7 @@ function addHours(date, hours) {
 }
 
 const DATE_TIME_FMT = new Intl.DateTimeFormat('nl-NL', {
+  timeZone: TIME_ZONE,
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
@@ -121,6 +168,7 @@ const DATE_TIME_FMT = new Intl.DateTimeFormat('nl-NL', {
 });
 
 const TIME_FMT = new Intl.DateTimeFormat('nl-NL', {
+  timeZone: TIME_ZONE,
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
@@ -128,6 +176,7 @@ const TIME_FMT = new Intl.DateTimeFormat('nl-NL', {
 });
 
 const SHORT_DATE_TIME_FMT = new Intl.DateTimeFormat('nl-NL', {
+  timeZone: TIME_ZONE,
   month: '2-digit',
   day: '2-digit',
   hour: '2-digit',
@@ -239,7 +288,7 @@ function pointInPolygon(point, geometry) {
   return false;
 }
 
-async function fetchStookwijzerFeature(lon, lat) {
+async function fetchStookwijzerFeature(lon, lat, signal) {
   // Small bbox around the point to limit response size.
   // 0.02 degrees is usually enough to catch a PC4 polygon without fetching too much.
   const d = 0.02;
@@ -258,7 +307,7 @@ async function fetchStookwijzerFeature(lon, lat) {
   url.searchParams.set('count', '50');
   url.searchParams.set('bbox', `${minx},${miny},${maxx},${maxy},CRS:84`);
 
-  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' }, signal });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`WFS request failed (${res.status}) ${text.slice(0, 200)}`);
@@ -272,7 +321,7 @@ async function fetchStookwijzerFeature(lon, lat) {
   return match ?? null;
 }
 
-async function fetchStookwijzerFeatureByPc4(pc4) {
+async function fetchStookwijzerFeatureByPc4(pc4, signal) {
   const url = new URL(WFS_ENDPOINT);
   url.searchParams.set('service', 'WFS');
   url.searchParams.set('version', '2.0.0');
@@ -283,7 +332,7 @@ async function fetchStookwijzerFeatureByPc4(pc4) {
   url.searchParams.set('count', '1');
   url.searchParams.set('cql_filter', `pc4='${pc4}'`);
 
-  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' }, signal });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`WFS request failed (${res.status}) ${text.slice(0, 200)}`);
@@ -479,6 +528,11 @@ function render(feature) {
 }
 
 async function check() {
+  const requestId = ++state.requestSeq;
+  if (state.activeController) state.activeController.abort();
+  const controller = new AbortController();
+  state.activeController = controller;
+
   const lat = parseNumber(el.lat.value);
   const lon = parseNumber(el.lon.value);
 
@@ -492,7 +546,7 @@ async function check() {
   el.result.hidden = true;
 
   try {
-    const feature = await fetchStookwijzerFeature(lon, lat);
+    const feature = await fetchStookwijzerFeature(lon, lat, controller.signal);
 
     if (!feature) {
       setStatus('Geen resultaat voor deze locatie (buiten NL of geen data).');
@@ -502,45 +556,62 @@ async function check() {
       return;
     }
 
-    setStatus('');
-    state.lastCoords = { lat, lon };
-    state.lastPc4 = null;
-    render(feature);
+    if (requestId === state.requestSeq) {
+      setStatus('');
+      state.lastCoords = { lat, lon };
+      state.lastPc4 = null;
+      render(feature);
+    }
   } catch (err) {
+    if (err?.name === 'AbortError') return;
     console.error(err);
-    setStatus('Fout bij ophalen. Probeer opnieuw.');
-    el.screen.dataset.tone = 'neutral';
+    if (requestId === state.requestSeq) {
+      setStatus('Fout bij ophalen. Probeer opnieuw.');
+      el.screen.dataset.tone = 'neutral';
+    }
   } finally {
-    setLoading(false);
+    if (requestId === state.requestSeq) setLoading(false);
   }
 }
 
 async function checkByPc4(pc4) {
+  const requestId = ++state.requestSeq;
+  if (state.activeController) state.activeController.abort();
+  const controller = new AbortController();
+  state.activeController = controller;
+
   setLoading(true);
   setStatus('Bezig met ophalen…');
   el.result.hidden = true;
 
   try {
-    const feature = await fetchStookwijzerFeatureByPc4(pc4);
+    const feature = await fetchStookwijzerFeatureByPc4(pc4, controller.signal);
     if (!feature) {
-      setStatus('Geen resultaat voor deze postcode.');
-      el.screen.dataset.tone = 'neutral';
-      el.headline.textContent = 'ONBEKEND';
-      el.subline.textContent = 'Geen advies beschikbaar';
+      if (requestId === state.requestSeq) {
+        setStatus('Geen resultaat voor deze postcode.');
+        el.screen.dataset.tone = 'neutral';
+        el.headline.textContent = 'ONBEKEND';
+        el.subline.textContent = 'Geen advies beschikbaar';
+      }
       return;
     }
 
-    setStatus('');
-    state.lastPc4 = pc4;
-    state.lastCoords = null;
-    localStorage.setItem(PC4_STORAGE_KEY, pc4);
-    render(feature);
+    if (requestId === state.requestSeq) {
+      setStatus('');
+      state.lastPc4 = pc4;
+      state.lastCoords = null;
+      localStorage.setItem(PC4_STORAGE_KEY, pc4);
+      render(feature);
+    }
   } catch (err) {
+    if (err?.name === 'AbortError') return;
     console.error(err);
-    setStatus('Fout bij ophalen. Probeer opnieuw.');
-    el.screen.dataset.tone = 'neutral';
+    if (requestId === state.requestSeq) {
+      setStatus('Fout bij ophalen. Probeer opnieuw.');
+      el.screen.dataset.tone = 'neutral';
+    }
   } finally {
-    setLoading(false);
+    if (requestId === state.requestSeq) setLoading(false);
   }
 }
 

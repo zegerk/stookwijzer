@@ -21,15 +21,17 @@
           <div class="postcodeWrap">
             <form id="postcodeForm" class="postcodeForm">
               <span class="postcodeLabel">Postcode</span>
-              <input
-                id="postcodeInput"
-                class="postcodeInput"
-                type="text"
-                inputmode="numeric"
-                autocomplete="postal-code"
-                placeholder="1234"
-                aria-label="Postcode (4 cijfers)"
-              />
+                <input
+                  id="postcodeInput"
+                  class="postcodeInput"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="postal-code"
+                  placeholder="1234"
+                  aria-label="Postcode (4 cijfers)"
+                  maxlength="4"
+                  pattern="\d{4}"
+                />
               <button id="btnLocate" type="button" class="postcodeAction secondary postcodeIcon" aria-label="Mijn locatie gebruiken">
                 <svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
                   <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" />
@@ -62,9 +64,9 @@
           <div class="sources">
             <span class="sourcesTitle">Data sources</span>
             <span class="sourcesSep">·</span>
-            <a class="sourceLink" href="https://www.nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/8a3479b0-7065-4637-8ace-95c38ba215d5" target="_blank" rel="noreferrer">Nationaal Georegister – Stookwijzer</a>
+              <a class="sourceLink" href="https://www.nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/8a3479b0-7065-4637-8ace-95c38ba215d5" target="_blank" rel="noopener noreferrer">Nationaal Georegister – Stookwijzer</a>
             <span class="sourcesSep">·</span>
-            <a class="sourceLink" href="https://data.rivm.nl/geo/alo/ows?service=WFS&request=GetCapabilities" target="_blank" rel="noreferrer">RIVM – WFS</a>
+              <a class="sourceLink" href="https://data.rivm.nl/geo/alo/ows?service=WFS&request=GetCapabilities" target="_blank" rel="noopener noreferrer">RIVM – WFS</a>
           </div>
         </div>
 
