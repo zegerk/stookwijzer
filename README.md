@@ -2,6 +2,8 @@
 
 A tiny static web app that shows the **wood burning advice** (“stookadvies”) for a Dutch postcode area, based on the RIVM Stookwijzer dataset.
 
+Live: <https://stookwijzer.zeger.app/>
+
 This is a front-end only app (HTML/CSS/JS). No backend.
 
 ## Data source
